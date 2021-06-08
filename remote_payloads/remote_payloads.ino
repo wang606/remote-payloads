@@ -19,8 +19,8 @@ void setup() {
   //打开串口
   Serial.begin(9600);
   //联网
-  wifier.addAP("TP-LINK_885D", "234wqhlthtklzhr");
-  wifier.addAP("wangqinghua-AP", "wangqinghua-AP-master");
+  wifier.addAP("wifi_1_name", "wifi_1_password");
+  wifier.addAP("wifi_2_name", "wifi_2_password");
   Serial.print("Connecting to ");
   int i = 0;
   while (wifier.run() != WL_CONNECTED) {
