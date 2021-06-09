@@ -121,7 +121,10 @@ bool handleDelete() {
 }
 
 void handleLogs() {
-  String logs = ""; 
+  String logs = standby.hostHeader() + "\n"; 
+  for (int i = 0; i < standby.headers(); i++) {
+    logs += standby.headerName(i) + ": " + standby.header(i) + "\n"; 
+  }
   for (int i = 0; i < standby.args(); i++) {
     logs += standby.argName(i) + ": " + standby.arg(i) + "\n"; 
   }
