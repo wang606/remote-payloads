@@ -8,13 +8,9 @@
 
 其他esp8266模块或开发板应该也行，只要有flash和WebServer库即可。
 
-![esp8266.jpg](https://i.loli.net/2021/06/08/Vrw95y4LY1kzfAH.jpg)
-
 ![esp8266.jpg](./img/esp8266.jpg)
 
 ### /index.html页面：
-
-![/index.html](https://i.loli.net/2021/06/08/5CoSbF3MKuztxWl.png)
 
 ![/index.html](./img/index.html.png)
 
@@ -22,23 +18,17 @@
 
 上传的文件将被存储在“/payloads/”根目录下。
 
-![upload.html](https://i.loli.net/2021/06/08/mM9sjIRXbLViqdW.png)
-
 ![/upload.html](./img/upload.html.png)
 
 ### /delete.html页面：
 
 只需要输入文件名如“logs”即可删除“/payloads/”+文件名如“/payloads/logs”文件，文件名不能包含“..”！
 
-![/delete.html](https://i.loli.net/2021/06/08/f3bDPRt5yzhEQu2.png)
-
 ![/delete.html](./img/delete.html.png)
 
 ### /list操作：
 
 列出/payloads/根目录下的所有文件夹和文件。
-
-![/list](https://i.loli.net/2021/06/08/t3L1FzMJRN2GAni.png)
 
 ![/list](./img/list.png)
 
