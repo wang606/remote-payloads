@@ -18,7 +18,6 @@ username = ""
 password = ""
 cookie = ""
 headers = {}
-proxy = {'http': '127.0.0.1:8080'}
 def main():
     global url
     global username
@@ -86,7 +85,7 @@ def authentication():
         return False
     if (password == ""):
         password = getpass.getpass("password: ")
-    authen = hashlib.sha1((password + cookie).encode()).hexdigest()
+    authen = hashlib.sha1((hashlib.sha1(password.encode()).hexdigest() + cookie).encode()).hexdigest()
     checkCookie = requests.post(url=url + "/cookie", data={'cookie': cookie, 'authen': authen})
     if (checkCookie.status_code == 200):
         headers['cookie'] = cookie
@@ -102,9 +101,9 @@ def shell():
     nack = username + "@" + url + " /$ "
     cmd = input(nack).split()
     if (cmd):
-        print(cmd)
         if cmd[0] == 'exit':
-            requests.post(url + "/cmd", headers=headers, data={'cmd': 'exit'})
+            response = requests.post(url + "/cmd", headers=headers, data={'cmd': 'exit'})
+            print(response.text)
             sys.exit(0)
         try:
             if cmd[0] == 'help':
@@ -157,7 +156,6 @@ def rm_(filePath):
     global url
     global headers
     response = requests.post(url + "/cmd", headers=headers, data={'cmd': 'rm', 'filePath': filePath})
-    print(response.text)
 
 if __name__ == '__main__':
     main()

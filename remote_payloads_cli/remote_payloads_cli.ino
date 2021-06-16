@@ -13,7 +13,7 @@
 #include <Hash.h>
 
 String _username = "wangqinghua"; // 自定义用户名
-String _password = "hacker"; // 自定义密码
+String _password = "4dcc4173d80a2817206e196a38f0dbf7850188ff"; // 自定义密码(example: sha1 of 'hacker')
 ESP8266WiFiMulti wifier; // 建立ESP8266WiFiMulti对象,对象名称是 'wifier'
 ESP8266WebServer shell(80); // 建立cli服务器对象shell，该对象用于响应cli请求。监听端口（80）
 String _cookie = ""; 
@@ -29,7 +29,6 @@ void setup() {
   wifier.addAP("ssid_1", "pass_1");
   wifier.addAP("ssid_1", "pass_2");
   Serial.print("Connecting to ");
-  int i = 0;
   while (wifier.run() != WL_CONNECTED) {
     delay(1000);
     Serial.print('.');
@@ -47,7 +46,7 @@ void setup() {
   //启动shell
   shell.on("/cookie", handleCookie); 
   shell.on("/up", HTTP_POST, respondOK, handleFileUpload); 
-  shell.on("/log", handleLogs); 
+  shell.on("/logs", handleLogs); 
   shell.on("/cmd", handleCmd); 
   shell.onNotFound(handler); 
   shell.collectHeaders(headerKeys, sizeof(headerKeys) / sizeof(headerKeys[0]));
@@ -157,9 +156,7 @@ bool handleCmd() {
     return false; 
   }
   String cmd = shell.arg("cmd"); 
-  if (cmd == "hello") {
-    shell.send(200, "text/plain", "hello " + _username + "!"); 
-  } else if (cmd == "ls") {
+  if (cmd == "ls") {
     String dir = shell.arg("dir");
     _ls(dir); 
   } else if (cmd == "cat") {
@@ -184,7 +181,7 @@ void _ls(String dir) {
   while (dir_.next()) {
     dirList += dir_.fileName() + "\n"; 
   }
-  shell.send(200, "text/plain", dirList); 
+  shell.send(200, "text/plain", dirList.substring(0, dirList.length() - 1)); 
 }
 
 void _cat(String filePath) {
