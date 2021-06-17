@@ -113,13 +113,17 @@ def shell():
             elif cmd[0] == 'mv':
                 mv_(cmd[1], cmd[2])
             elif cmd[0] == 'wget':
+                if (cmd[1].startswith("https://")):
+                    fingerprint = input("sha1 fingerprint: ")
+                else:
+                    fingerprint = ""
                 if (len(cmd) > 2):
                     if (cmd[2] == '-o'):
-                        wget_(cmd[1], cmd[3])
+                        wget_(cmd[1], cmd[3], fingerprint)
                     else:
                         print("Invalid Command!")
                 else:
-                    wget_(cmd[1], "/" + cmd[1].split('/')[-1])
+                    wget_(cmd[1], "/" + cmd[1].split('/')[-1], fingerprint)
             elif cmd[0] == 'clear':
                 os.system('clear')
             else:
@@ -188,10 +192,10 @@ def mv_(oFilePath, dFilePath):
     if (response.text):
         print(response.text)
     
-def wget_(httpUrl, filePath):
+def wget_(httpUrl, filePath, fingerprint):
     global url
     global headers
-    response = requests.post(url + "/cmd", headers=headers, data={'cmd': 'wget', 'httpUrl': httpUrl, 'filePath': filePath})
+    response = requests.post(url + "/cmd", headers=headers, data={'cmd': 'wget', 'httpUrl': httpUrl, 'filePath': filePath, 'fingerprint': fingerprint})
     print(response.text)
 
 if __name__ == '__main__':

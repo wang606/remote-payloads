@@ -11,24 +11,26 @@
 #include <ESP8266WebServer.h>
 #include <WiFiClient.h>
 #include <ESP8266HTTPClient.h>
-#include <WiFiClientSecure.h>
+#include <WiFiClientSecureBearSSL.h>
 #include <FS.h>
 #include <Hash.h>
 
 //-----config-start-----//
 //#define DEBUG; 
-String _username = "wangqinghua"; 
-String _password = "4dcc4173d80a2817206e196a38f0dbf7850188ff"; // sha1 of password "hacker"
+String username = "wangqinghua"; 
+String password = "4dcc4173d80a2817206e196a38f0dbf7850188ff"; // sha1 of password "hacker"
 String hidenDir = "wangqinghua/"; //url including hidenDir is forbidden to browser but accessible to CLI
 //-----config-end-----//
 ESP8266WiFiMulti wifier; // 建立ESP8266WiFiMulti对象,对象名称是 'wifier'
 ESP8266WebServer shell(80); // 建立cli服务器对象shell，该对象用于响应cli请求。监听端口（80）
-String _cookie = ""; 
-String cookie_ = ""; 
+String cookieNow = ""; 
+String cookieThen = ""; 
 File fsUploadFile; 
 WiFiClient wifiClient; 
 HTTPClient httpClient; 
-WiFiClientSecure wifiClientSSL; 
+std::unique_ptr<BearSSL::WiFiClientSecure>wifiClientSSL(new BearSSL::WiFiClientSecure);
+HTTPClient httpsClient; 
+const char *fingerprint; 
 //设置需要收集的请求头信息
 const char* headerKeys[] = {"cookie", "User-Agent"}; 
 
@@ -86,16 +88,16 @@ bool handleCookie() {
   // checkCookie
   if (shell.hasArg("cookie")) {
     // oldCookie
-    if (shell.arg("cookie") == _cookie) {
+    if (shell.arg("cookie") == cookieNow) {
       shell.send(200); 
       return true; 
     }
     // newCookie
-    else if (shell.arg("cookie") == cookie_) {
-      if (shell.arg("authen") == sha1(_password + cookie_)) {
-        _cookie = cookie_; 
+    else if (shell.arg("cookie") == cookieThen) {
+      if (shell.arg("authen") == sha1(password + cookieThen)) {
+        cookieNow = cookieThen; 
         #ifdef DEBUG
-        Serial.println("_cookie=" + _cookie); 
+        Serial.println("cookieNow=" + cookieNow); 
         #endif
         shell.send(200); 
         return true; 
@@ -108,14 +110,14 @@ bool handleCookie() {
     }
   }
   // getCookie
-  if (shell.arg("username") != _username) {
+  if (shell.arg("username") != username) {
     shell.send(403, "text/plain", "Invalid username!"); 
     return false; 
   }
   int time_ = time(NULL); 
   int rand_ = rand(); 
-  cookie_ = sha1(_username + time_ + rand_); 
-  shell.send(200, "text/plain", cookie_); 
+  cookieThen = sha1(username + time_ + rand_); 
+  shell.send(200, "text/plain", cookieThen); 
   return true; 
 }
 
@@ -124,11 +126,11 @@ void respondOK() {
 }
 
 bool handleFileUpload() {
-  if (!_cookie) {
+  if (!cookieNow) {
     shell.send(403, "text/plain", "no cookie!"); return false; 
   }
   String cookie = shell.header("cookie"); 
-  if (cookie != _cookie) {
+  if (cookie != cookieNow) {
     shell.send(403, "text/plain", "wrong cookie!"); return false; 
   }
   String filePath = shell.arg("filePath"); 
@@ -181,11 +183,11 @@ void handleList() {
 }
 
 bool handleCmd() {
-  if (!_cookie) {
+  if (!cookieNow) {
     shell.send(403, "text/plain", "no cookie!"); 
     return false; 
   }
-  if (shell.header("cookie") != _cookie) {
+  if (shell.header("cookie") != cookieNow) {
     shell.send(403, "text/plain", "wrong cookie!"); 
     return false; 
   }
@@ -206,9 +208,10 @@ bool handleCmd() {
   } else if (cmd == "wget") {
     String httpUrl = shell.arg("httpUrl"); 
     String filePath = shell.arg("filePath"); 
-    _wget(httpUrl, filePath); 
+    String user_fingerprint = shell.arg("fingerprint"); 
+    _wget(httpUrl, filePath, user_fingerprint); 
   } else if (cmd == "exit") {
-    _cookie = ""; 
+    cookieNow = ""; 
     shell.send(200, "text/html", "bye!"); 
   } else {
     shell.send(500, "text/html", "Invalid Command!"); 
@@ -275,7 +278,7 @@ bool _mv(String oFilePath, String dFilePath) {
   return true; 
 }
 
-bool _wget(String httpUrl, String filePath) {
+bool _wget(String httpUrl, String filePath, String user_fingerprint) {
   if (httpUrl.startsWith("http://")) {
     httpClient.begin(wifiClient, httpUrl); 
     int httpCode = httpClient.GET(); 
@@ -300,50 +303,27 @@ bool _wget(String httpUrl, String filePath) {
     return true; 
   }
   else if (httpUrl.startsWith("https://")) {
-    String result = ""; 
-    String payload = ""; 
-    String host = httpUrl.substring(8); 
-    String url; 
-    int port; 
-    if (host.indexOf("/") > 0) {
-      url = host.substring(host.indexOf("/")); 
-      host = host.substring(0, host.indexOf("/")); 
+    fingerprint = user_fingerprint.c_str(); 
+    wifiClientSSL->setFingerprint(fingerprint); 
+    httpsClient.begin(*wifiClientSSL, httpUrl); 
+    int httpsCode = httpsClient.GET(); 
+    String result; 
+    File dataFile = SPIFFS.open(filePath, "w"); 
+    if (httpsCode > 0) {
+      result += "HTTP/1.1 " + httpsCode; 
+      result += "\n"; 
+      if (httpsCode == HTTP_CODE_OK || httpsCode == HTTP_CODE_MOVED_PERMANENTLY) {
+        String payload = httpsClient.getString(); 
+        result += (payload.length() > 2000) ? payload.substring(0, 94) + "[More]" : payload; 
+        dataFile.print(payload); 
+        dataFile.close(); 
+      }
+      httpsClient.end(); 
     } else {
-      url = "/"; 
-    }
-    if (host.indexOf(":") > 0) {
-      port = host.substring(host.indexOf(":") + 1).toInt(); 
-      host = host.substring(0, host.indexOf(":")); 
-    } else {
-      port = 443; 
-    }
-    #ifdef DEBUG
-    Serial.println("host: " + host + "\nport: " + port + "\nurl: " + url); 
-    #endif
-    if (!wifiClientSSL.connect(host, port)) {
-      shell.send(200, "text/plain", "connection failed"); 
+      shell.send(200, "text/plain", httpsClient.errorToString(httpsCode).c_str()); 
+      httpsClient.end(); 
       return false; 
     }
-    wifiClientSSL.print(String("GET ") + url + "HTTP/1.1\r\n" + 
-                        "Host: " + host + "\r\n" + 
-                        "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0\r\n" + 
-                        "Connection: close\r\n\r\n"); 
-    result += "[Headers]\n"; 
-    String line; 
-    while (wifiClientSSL.connected()) {
-      line = wifiClientSSL.readStringUntil('\n'); 
-      result += line + String("\n"); 
-      if (line == "\r") break; 
-    }
-    result += "[Body]\n"; 
-    while (wifiClientSSL.available()) {
-      line = wifiClientSSL.readStringUntil('\n'); 
-      payload += line + String("\n"); 
-    }
-    result += (payload.length() > 2000) ? payload.substring(0, 94) + "[More]" : payload; 
-    File dataFile = SPIFFS.open(filePath, "w"); 
-    dataFile.print(payload); 
-    dataFile.close(); 
     shell.send(200, "text/plain", result); 
     return true; 
   }
@@ -365,11 +345,11 @@ bool handler() {
   } 
   // 黑名单认证
   if (webAddress.indexOf(hidenDir) > 0) {
-    if (!_cookie) {
+    if (!cookieNow) {
       shell.send(403, "text/plain", "no cookie!"); 
       return false; 
     }
-    if (shell.header("cookie") != _cookie) {
+    if (shell.header("cookie") != cookieNow) {
       shell.send(403, "text/plain", "wrong cookie!"); 
       return false; 
     }

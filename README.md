@@ -100,6 +100,29 @@ exit            log off and exit                exit
 - `rm /filePath/fileName`将删除filePath下fileName文件，而`rm /filePath/`将删除**整个filePath目录及目录下所有文件**！`rm /`则相当于清空内存
 - 向`http://[ip|domain]:port/logs`发送的请求，将会被esp8266记录下来，默认追加在`/payloads/logs`文件，这可用于反射型XSS漏洞获取cookie
 - 访问`http://[ip|domain]:port/list`，将会列出非隐藏目录下所有文件链接
+- 使用wget命令发送HTTPS请求时需要sha1指纹。到浏览器开发者工具中“网络”选项中选中你想要GET的文件，右侧会弹出请求和响应的相关信息，其中“安全性”选项底部便有sha1指纹，仅复制其指纹即可
+
+![sha1.png](./img/sha1.png)
+
+# ESP8266-remote-payloads-sd-cli
+
+与`ESP8266-remote-payloads-cli`共用一套客户端，命令兼容，只是将闪存改为SD卡。
+
+由于esp8266-01E模块引脚不足（或是不支持SPI协议？？），需要使用**模组**或**开发板**（如NodeMCU），图示为NodeMCU接线图。
+
+```
+*  接线：sd卡<---->NodeMCU
+*       VCC----------Vin(5V驱动)
+*       GND----------GND
+*       MISO---------D6
+*       MOSI---------D7
+*       SCK----------D5
+*       CS-----------D8
+```
+
+![NodeMCU](./img/NodeMCU.jpg)
+
+
 
 
 
