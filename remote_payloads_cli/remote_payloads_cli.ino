@@ -9,49 +9,72 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266WebServer.h>
+#include <WiFiClient.h>
+#include <ESP8266HTTPClient.h>
+#include <WiFiClientSecure.h>
 #include <FS.h>
 #include <Hash.h>
 
-String _username = "wangqinghua"; // 自定义用户名
-String _password = "4dcc4173d80a2817206e196a38f0dbf7850188ff"; // 自定义密码(example: sha1 of 'hacker')
+//-----config-start-----//
+//#define DEBUG; 
+String _username = "wangqinghua"; 
+String _password = "4dcc4173d80a2817206e196a38f0dbf7850188ff"; // sha1 of password "hacker"
+String hidenDir = "wangqinghua/"; //url including hidenDir is forbidden to browser but accessible to CLI
+//-----config-end-----//
 ESP8266WiFiMulti wifier; // 建立ESP8266WiFiMulti对象,对象名称是 'wifier'
 ESP8266WebServer shell(80); // 建立cli服务器对象shell，该对象用于响应cli请求。监听端口（80）
 String _cookie = ""; 
 String cookie_ = ""; 
 File fsUploadFile; 
+WiFiClient wifiClient; 
+HTTPClient httpClient; 
+WiFiClientSecure wifiClientSSL; 
 //设置需要收集的请求头信息
 const char* headerKeys[] = {"cookie", "User-Agent"}; 
 
 void setup() {
   //打开串口
+  #ifdef DEBUG
   Serial.begin(9600);
+  #endif
   //联网
   wifier.addAP("ssid_1", "pass_1");
-  wifier.addAP("ssid_1", "pass_2");
+  wifier.addAP("ssid_2", "pass_2");
+  #ifdef DEBUG
   Serial.print("Connecting to ");
+  #endif
   while (wifier.run() != WL_CONNECTED) {
     delay(1000);
+    #ifdef DEBUG
     Serial.print('.');
+    #endif
   }
+  #ifdef DEBUG
   Serial.print(WiFi.SSID());
   Serial.print(" successfully!\nIP:\t");
   Serial.println(WiFi.localIP());
+  #endif
   //启动文件系统
   bool _ = SPIFFS.begin();
+  #ifdef DEBUG
   if (_) {
     Serial.println("open FS successfully!");
   } else {
     Serial.println("can't access to FS!");
   }
+  #endif
   //启动shell
   shell.on("/cookie", handleCookie); 
   shell.on("/up", HTTP_POST, respondOK, handleFileUpload); 
   shell.on("/logs", handleLogs); 
+  shell.on("/list", handleList); 
   shell.on("/cmd", handleCmd); 
   shell.onNotFound(handler); 
   shell.collectHeaders(headerKeys, sizeof(headerKeys) / sizeof(headerKeys[0]));
   shell.begin();
+  #ifdef DEBGU
   Serial.println("stand by!");
+  #endif
 }
 
 void loop() {
@@ -71,7 +94,9 @@ bool handleCookie() {
     else if (shell.arg("cookie") == cookie_) {
       if (shell.arg("authen") == sha1(_password + cookie_)) {
         _cookie = cookie_; 
+        #ifdef DEBUG
         Serial.println("_cookie=" + _cookie); 
+        #endif
         shell.send(200); 
         return true; 
       }
@@ -103,15 +128,13 @@ bool handleFileUpload() {
     shell.send(403, "text/plain", "no cookie!"); return false; 
   }
   String cookie = shell.header("cookie"); 
-  Serial.println("cookie_header=" + cookie); 
   if (cookie != _cookie) {
-    Serial.println("wrong cookie!"); shell.send(403); return false; 
+    shell.send(403, "text/plain", "wrong cookie!"); return false; 
   }
   String filePath = shell.arg("filePath"); 
   HTTPUpload& upload = shell.upload(); 
-  if(upload.status == UPLOAD_FILE_START){                     // 如果上传状态为UPLOAD_FILE_START                          // 建立字符串变量用于存放上传文件名
+  if(upload.status == UPLOAD_FILE_START){                     // 如果上传状态为UPLOAD_FILE_START
     if(!filePath.startsWith("/")) filePath = "/" + filePath;  // 为上传文件名前加上"/"
-    Serial.println("File Path: " + filePath);                 // 通过串口监视器输出上传文件的名称
     fsUploadFile = SPIFFS.open(filePath, "w");            // 在SPIFFS中建立文件用于写入用户上传的文件数据
   }
   else if(upload.status == UPLOAD_FILE_WRITE){          // 如果上传状态为UPLOAD_FILE_WRITE      
@@ -121,10 +144,8 @@ bool handleFileUpload() {
   else if(upload.status == UPLOAD_FILE_END){            // 如果上传状态为UPLOAD_FILE_END 
     if(fsUploadFile) {                                    // 如果文件成功建立
       fsUploadFile.close();                               // 将文件关闭
-      Serial.println(" Size: "+ upload.totalSize);        // 通过串口监视器输出文件大小
       shell.send(200, "text/plain", "upload successfully!"); 
     } else {                                              // 如果文件未能成功建立
-      Serial.println("File upload failed");               // 通过串口监视器输出报错信息
       shell.send(200, "text/plain", "fail to upload!"); // 向浏览器发送相应代码500（服务器错误）
     }    
   }
@@ -146,6 +167,19 @@ void handleLogs() {
   shell.send(200); 
 }
 
+void handleList() {
+  Dir dir = SPIFFS.openDir("/"); 
+  String dirList = "<html><head><meta charset=\"UTF-8\"><title>remote payloads</title></head>";
+  dirList += "<body><center><h1>ESP8266 SPIFFS Remote Payloads</h1><hr/>"; 
+  while (dir.next()) {
+    if (dir.fileName().indexOf(hidenDir) < 0) {
+      dirList += "<a href=\"" + dir.fileName() + "\">" + dir.fileName() + "</a><br/>"; 
+    }
+  }
+  dirList += "</center></body></html>"; 
+  shell.send(200, "text/html", dirList); 
+}
+
 bool handleCmd() {
   if (!_cookie) {
     shell.send(403, "text/plain", "no cookie!"); 
@@ -165,6 +199,14 @@ bool handleCmd() {
   } else if (cmd == "rm") {
     String filePath = shell.arg("filePath"); 
     _rm(filePath); 
+  } else if (cmd == "mv") {
+    String oFilePath = shell.arg("oFilePath"); 
+    String dFilePath = shell.arg("dFilePath"); 
+    _mv(oFilePath, dFilePath); 
+  } else if (cmd == "wget") {
+    String httpUrl = shell.arg("httpUrl"); 
+    String filePath = shell.arg("filePath"); 
+    _wget(httpUrl, filePath); 
   } else if (cmd == "exit") {
     _cookie = ""; 
     shell.send(200, "text/html", "bye!"); 
@@ -203,20 +245,146 @@ void _rm(String filePath) {
   } else SPIFFS.remove(filePath);
   shell.send(200); 
 }
+
+void mvFile(String oFilePath, String dFilePath) {
+  File oDataFile = SPIFFS.open(oFilePath, "r"); 
+  File dDataFile = SPIFFS.open(dFilePath, "w"); 
+  for (int i = 0; i < oDataFile.size(); i++) {
+    dDataFile.print((char)oDataFile.read()); 
+  }
+  oDataFile.close(); 
+  dDataFile.close(); 
+  SPIFFS.remove(oFilePath); 
+}
+
+bool _mv(String oFilePath, String dFilePath) {
+  if (oFilePath.endsWith("/") && dFilePath.endsWith("/")) {
+    Dir dir = SPIFFS.openDir(oFilePath); 
+    while (dir.next()) {
+      String dFile = dir.fileName(); 
+      dFile.replace(oFilePath, dFilePath); 
+      mvFile(dir.fileName(), dFile); 
+    }
+  } else if (!oFilePath.endsWith("/") && !dFilePath.endsWith("/")) {
+    mvFile(oFilePath, dFilePath); 
+  } else {
+    shell.send(500, "text/plain", "Invalid Command!"); 
+    return false; 
+  }
+  shell.send(200); 
+  return true; 
+}
+
+bool _wget(String httpUrl, String filePath) {
+  if (httpUrl.startsWith("http://")) {
+    httpClient.begin(wifiClient, httpUrl); 
+    int httpCode = httpClient.GET(); 
+    String result; 
+    File dataFile = SPIFFS.open(filePath, "w"); 
+    if (httpCode > 0) {
+      result += "HTTP/1.1 " + httpCode; 
+      result += "\n"; 
+      if (httpCode == HTTP_CODE_OK) {
+        String payload = httpClient.getString(); 
+        result += (payload.length() > 2000) ? payload.substring(0, 94) + "[More]" : payload; 
+        dataFile.print(payload); 
+        dataFile.close(); 
+      }
+      httpClient.end(); 
+    } else {
+      shell.send(200, "text/plain", httpClient.errorToString(httpCode).c_str()); 
+      httpClient.end(); 
+      return false; 
+    }
+    shell.send(200, "text/plain", result); 
+    return true; 
+  }
+  else if (httpUrl.startsWith("https://")) {
+    String result = ""; 
+    String payload = ""; 
+    String host = httpUrl.substring(8); 
+    String url; 
+    int port; 
+    if (host.indexOf("/") > 0) {
+      url = host.substring(host.indexOf("/")); 
+      host = host.substring(0, host.indexOf("/")); 
+    } else {
+      url = "/"; 
+    }
+    if (host.indexOf(":") > 0) {
+      port = host.substring(host.indexOf(":") + 1).toInt(); 
+      host = host.substring(0, host.indexOf(":")); 
+    } else {
+      port = 443; 
+    }
+    #ifdef DEBUG
+    Serial.println("host: " + host + "\nport: " + port + "\nurl: " + url); 
+    #endif
+    if (!wifiClientSSL.connect(host, port)) {
+      shell.send(200, "text/plain", "connection failed"); 
+      return false; 
+    }
+    wifiClientSSL.print(String("GET ") + url + "HTTP/1.1\r\n" + 
+                        "Host: " + host + "\r\n" + 
+                        "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0\r\n" + 
+                        "Connection: close\r\n\r\n"); 
+    result += "[Headers]\n"; 
+    String line; 
+    while (wifiClientSSL.connected()) {
+      line = wifiClientSSL.readStringUntil('\n'); 
+      result += line + String("\n"); 
+      if (line == "\r") break; 
+    }
+    result += "[Body]\n"; 
+    while (wifiClientSSL.available()) {
+      line = wifiClientSSL.readStringUntil('\n'); 
+      payload += line + String("\n"); 
+    }
+    result += (payload.length() > 2000) ? payload.substring(0, 94) + "[More]" : payload; 
+    File dataFile = SPIFFS.open(filePath, "w"); 
+    dataFile.print(payload); 
+    dataFile.close(); 
+    shell.send(200, "text/plain", result); 
+    return true; 
+  }
+  else {
+    shell.send(500, "text/plain", "Invalid Command!"); 
+    return false; 
+  }
+}
 //--------------------cli-end--------------------//
 
 // 处理用户浏览器的HTTP访问
-void handler() {
+bool handler() {
   // 获取用户请求网址信息
   String webAddress = shell.uri();
+  // 过滤".."
+  if (webAddress.indexOf("..") > 0) {
+    shell.send(500, "text/plain", "Bad Request!"); 
+    return false; 
+  } 
+  // 黑名单认证
+  if (webAddress.indexOf(hidenDir) > 0) {
+    if (!_cookie) {
+      shell.send(403, "text/plain", "no cookie!"); 
+      return false; 
+    }
+    if (shell.header("cookie") != _cookie) {
+      shell.send(403, "text/plain", "wrong cookie!"); 
+      return false; 
+    }
+  }
+  #ifdef DEBUG
   Serial.print('webAddress= ');
   Serial.println(webAddress);
+  #endif
   // 通过handleFileRead函数处处理用户访问
   bool fileReadOK = handleFileRead(webAddress);
   // 如果在SPIFFS无法找到用户访问的资源，则回复404 (Not Found)
   if (!fileReadOK){                                                 
     shell.send(404, "text/plain", "404 Not Found"); 
   }
+  return true; 
 }
 
 bool handleFileRead(String path) {

