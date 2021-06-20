@@ -166,7 +166,7 @@ void deviation(struct tm * tmstruct, int* year, int* month, int* day, int* hour,
 
 void printDirectory(File dir, String dirPath, int numTabs, String* result, bool html) {
   while (true) {
-    if ((html) && (dirPath.indexOf(hiddenDir))) {
+    if ((html) && (dirPath.indexOf(hiddenDir) > 0)) {
       break; 
     }
     File entry =  dir.openNextFile();
