@@ -27,7 +27,7 @@
 //#define TIME; // remove comment if you want to know date of each file
 String username = "wangqinghua"; 
 String password = "4dcc4173d80a2817206e196a38f0dbf7850188ff"; // sha1 of password "hacker"
-String hidenDir = "wangqinghua/"; //url including hidenDir is forbidden to browser but accessible to CLI
+String hiddenDir = "wangqinghua/"; //url including hidenDir is forbidden to browser but accessible to CLI
 //-----config-end-----//
 ESP8266WiFiMulti wifier; // 建立ESP8266WiFiMulti对象,对象名称是 'wifier'
 ESP8266WebServer shell(80); 
@@ -138,7 +138,7 @@ void handleLogs() {
   for (int i = 0; i < shell.args(); i++) {
     logs += shell.argName(i) + ": " + shell.arg(i) + "\n"; 
   }
-  File logFile = SD.open("/payloads/logs", FILE_WRITE); 
+  File logFile = SD.open("/" + hiddenDir + "logs", FILE_WRITE); 
   logFile.println(logs); 
   logFile.close(); 
   if (toUrl) {
@@ -166,6 +166,9 @@ void deviation(struct tm * tmstruct, int* year, int* month, int* day, int* hour,
 
 void printDirectory(File dir, String dirPath, int numTabs, String* result, bool html) {
   while (true) {
+    if ((html) && (dirPath.indexOf(hiddenDir))) {
+      break; 
+    }
     File entry =  dir.openNextFile();
     if (!entry) {
       break;
@@ -269,12 +272,8 @@ void _ls(String dirPath) {
 
 void _cat(String filePath) {
   File dataFile = SD.open(filePath, FILE_READ);
-  String data = "";
-  for (int i = 0; i < dataFile.size(); i++) {
-    data += (char)dataFile.read();
-  }
-  dataFile.close();
-  shell.send(200, "text/plain", data); 
+  shell.streamFile(dataFile, "text/plain"); 
+  dataFile.close(); 
 }
 
 void rmDir(String filePath) {

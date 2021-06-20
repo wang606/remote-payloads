@@ -19,7 +19,7 @@
 //#define DEBUG; 
 String username = "wangqinghua"; 
 String password = "4dcc4173d80a2817206e196a38f0dbf7850188ff"; // sha1 of password "hacker"
-String hidenDir = "wangqinghua/"; //url including hidenDir is forbidden to browser but accessible to CLI
+String hiddenDir = "wangqinghua/"; //url including hidenDir is forbidden to browser but accessible to CLI
 //-----config-end-----//
 ESP8266WiFiMulti wifier; // 建立ESP8266WiFiMulti对象,对象名称是 'wifier'
 ESP8266WebServer shell(80); // 建立cli服务器对象shell，该对象用于响应cli请求。监听端口（80）
@@ -164,7 +164,7 @@ void handleLogs() {
     logs += shell.argName(i) + ": " + shell.arg(i) + "\n"; 
   }
   logs += "\n"; 
-  File logFile = SPIFFS.open("/payloads/logs", "a"); 
+  File logFile = SPIFFS.open("/" + hiddenDir + "logs", "a"); 
   logFile.println(logs); 
   logFile.close(); 
   if (toUrl) {
@@ -179,7 +179,7 @@ void handleList() {
   String dirList = "<html><head><meta charset=\"UTF-8\"><title>remote payloads</title></head>";
   dirList += "<body><center><h1>ESP8266 SPIFFS Remote Payloads</h1><hr/>"; 
   while (dir.next()) {
-    if (dir.fileName().indexOf(hidenDir) < 0) {
+    if (dir.fileName().indexOf(hiddenDir) < 0) {
       dirList += "<a href=\"" + dir.fileName() + "\">" + dir.fileName() + "</a><br/>"; 
     }
   }
@@ -236,12 +236,8 @@ void _ls(String dir) {
 
 void _cat(String filePath) {
   File dataFile = SPIFFS.open(filePath, "r");
-  String data = "";
-  for (int i = 0; i < dataFile.size(); i++) {
-    data += (char)dataFile.read();
-  }
-  dataFile.close();
-  shell.send(200, "text/plain", data); 
+  shell.streamFile(dataFile, "text/plain"); 
+  dataFile.close(); 
 }
 
 void _rm(String filePath) {
@@ -345,7 +341,7 @@ bool handler() {
     return false; 
   } 
   // 黑名单认证
-  if (webAddress.indexOf(hidenDir) > 0) {
+  if (webAddress.indexOf(hiddenDir) > 0) {
     if (!cookieNow) {
       shell.send(403, "text/plain", "no cookie!"); 
       return false; 
