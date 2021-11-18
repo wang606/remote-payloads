@@ -1,5 +1,5 @@
 /*---------------------------------------------------------//
-*项目名称：remote_payloads_sd_cli
+*项目名称：remote_payloads_sd
 *程序名称：remote_payloads_sd_cli.ino
 *作者：wangqinghua
 *日期：2021年6月15日
@@ -170,7 +170,7 @@ void printDirectory(File dir, String dirPath, int numTabs, String* result, bool 
       break; 
     }
     File entry =  dir.openNextFile();
-    if (!entry) {
+    if ((!entry) or (entry.isDirectory() and String(entry.name()) == hiddenDir.substring(0, hiddenDir.length() - 1)) and (html)) {
       break;
     }
     *result += (html) ? "<tr><td>|" : "|"; 

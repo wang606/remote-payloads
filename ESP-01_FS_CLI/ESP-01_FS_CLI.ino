@@ -1,5 +1,5 @@
 //----------------------------------------------------------//
-//项目名称：remote_payloads_cli
+//项目名称：remote_payloads
 //程序名称：remote_payloads_cli.ino
 //作者：wangqinghua
 //日期：2021年6月7日
