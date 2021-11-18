@@ -1,6 +1,6 @@
 /*---------------------------------------------------------//
-*项目名称：remote_payloads_sd
-*程序名称：remote_payloads_sd_cli.ino
+*项目名称：remote_payloads
+*程序名称：NodeMCU_SD_CLI.ino
 *作者：wangqinghua
 *日期：2021年6月15日
 *特别说明：
